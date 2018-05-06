@@ -16,11 +16,13 @@ let savedBirds = [];
 let pipes = [];
 let counter = 0;
 let slider;
+let bestBird;
 
 function keyPressed() {
   if (key === 'S') {
-    let bird = birds[0];
-    saveJSON(bird.brain, 'bird.json');
+    let bird = bestBird;
+    let jsonStr = bird.brain.serialize();
+	setCookie("bestBird",jsonStr,5);
   }
 }
 
@@ -30,12 +32,19 @@ function setup() {
   for (let i = 0; i < TOTAL; i++) {
     birds[i] = new Bird();
   }
+  bestBird = birds[0];
 }
 
 function draw() {
   for (let n = 0; n < slider.value(); n++) {
     if (counter % 75 == 0) {
       pipes.push(new Pipe());
+    }
+    for (let i = birds.length - 1; i >= 0; i--) {
+      if(counter%100 == 0){
+       if(bestBird.score<bird.score)
+         bestBird = bird;
+      }
     }
     counter++;
 
