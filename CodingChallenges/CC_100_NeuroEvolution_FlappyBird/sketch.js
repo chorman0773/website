@@ -10,6 +10,28 @@
 // Part 4: https://youtu.be/HrvNpbnjEG8
 // Part 5: https://youtu.be/U9wiMM3BqLU
 
+
+const STATES = {
+	NORMAL: {ordinal:0,name:"NORMAL"},
+	PLAYBACK: {oridinal:1,name:"PLAYBACK"},
+	PAUSED: {ordinal:2,name:"PAUSED"},
+	RESET: {ordinal:3,name:"RESET"}
+};
+
+class SaveState{
+	constructor(){
+		this.savedBirds = birds;
+		this.savedCounter = counter;
+		this.savedPipes = pipes;
+	}
+	load(){
+		birds = this.savedBirds;
+		counter = this.savedCounter;
+		pipes = this.savedPipes;
+	}
+};
+
+
 const TOTAL = 500;
 let birds = [];
 let savedBirds = [];
@@ -17,13 +39,32 @@ let pipes = [];
 let counter = 0;
 let slider;
 let bestBird;
-
+let playbackSaveState;
+let state;
+let prevState;
 function keyPressed() {
   if (key === 'S') {
     let bird = bestBird;
     let jsonStr = bird.brain.serialize();
 	setCookie("bestBird",jsonStr,5);
-  }
+  }else if(key === 'P'&&state!=States.PAUSED){
+		prevState = state;
+	  state = States.PAUSED;
+  }else if(key === 'P'&&state==States.PAUSED){
+		state = prevState;
+	}else if(key === 'L'&&state!=States.PLAYBACK){
+		let jsonStr = getCookie("bestBird");
+		if(!jsonStr||jsonStr.length()<=0)
+			return;
+		local brain = bestBird.brain.copy();
+		playback(new Bird(brain));
+	}
+}
+
+function playback(bird){
+	playbackSaveState = new SaveState();
+	birds= [bird];
+	state = States.PLAYBACK;
 }
 
 function setup() {
@@ -32,53 +73,64 @@ function setup() {
   for (let i = 0; i < TOTAL; i++) {
     birds[i] = new Bird();
   }
-  bestBird = birds[0];
+	let jsonStr = getCookie("bestBird");
+	if(!jsonStr||jsonStr.length()<=0)
+		bestBird = birds[0];
+  else
+		bestBird = new Bird(NeuralNetwork.deserialize(jsonStr));
+  state = States.NORMAL;
 }
 
 function draw() {
-  for (let n = 0; n < slider.value(); n++) {
-    if (counter % 75 == 0) {
-      pipes.push(new Pipe());
-    }
-    for (let i = birds.length - 1; i >= 0; i--) {
-      if(counter%100 == 0){
-       if(bestBird.score<bird.score)
-         bestBird = bird;
-      }
-    }
-    counter++;
+	if(state!=States.PAUSED&&state!=States.RESET)
+		for (let n = 0; n < slider.value(); n++) {
+			if (counter % 75 == 0) {
+				pipes.push(new Pipe());
+			}
+			for (let i = birds.length - 1; i >= 0; i--) {
+				if(counter%100 == 0){
+				 if(bestBird.score<bird.score)
+					 bestBird = bird;
+				}
+			}
+			counter++;
 
-    for (let i = pipes.length - 1; i >= 0; i--) {
-      pipes[i].update();
+			for (let i = pipes.length - 1; i >= 0; i--) {
+				pipes[i].update();
 
-      for (let j = birds.length - 1; j >= 0; j--) {
-        if (pipes[i].hits(birds[j])) {
-          savedBirds.push(birds.splice(j, 1)[0]);
-        }
-      }
+				for (let j = birds.length - 1; j >= 0; j--) {
+					if (pipes[i].hits(birds[j])) {
+						savedBirds.push(birds.splice(j, 1)[0]);
+					}
+				}
 
-      if (pipes[i].offscreen()) {
-        pipes.splice(i, 1);
-      }
-    }
+				if (pipes[i].offscreen()) {
+					pipes.splice(i, 1);
+				}
+			}
 
-    for (let i = birds.length - 1; i >= 0; i--) {
-      if (birds[i].offScreen()) {
-        savedBirds.push(birds.splice(i, 1)[0]);
-      }
-    }
+			for (let i = birds.length - 1; i >= 0; i--) {
+				if (birds[i].offScreen()) {
+					savedBirds.push(birds.splice(i, 1)[0]);
+				}
+			}
 
-    for (let bird of birds) {
-      bird.think(pipes);
-      bird.update();
-    }
+			for (let bird of birds) {
+				bird.think(pipes);
+				bird.update();
+			}
 
-    if (birds.length === 0) {
-      counter = 0;
-      nextGeneration();
-      pipes = [];
-    }
-  }
+			if (birds.length === 0) {
+				if(state==States.PLAYBACK){
+					state = States.PAUSED;
+					playbackSavedState.load();
+				}else{
+					counter = 0;
+					nextGeneration();
+					pipes = [];
+				}
+			}
+		}
 
   // All the drawing stuff
   background(0);
