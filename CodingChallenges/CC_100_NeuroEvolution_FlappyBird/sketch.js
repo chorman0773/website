@@ -42,6 +42,13 @@ let bestBird;
 let playbackSaveState;
 let state;
 let prevState;
+let active = false;
+
+function wait(){
+	while(active);
+}
+
+
 function keyPressed() {
   if (key === 'S') {
     let bird = bestBird;
@@ -62,9 +69,12 @@ function keyPressed() {
 }
 
 function playback(bird){
+	wait();
+	active = true;
 	playbackSaveState = new SaveState();
 	birds= [bird];
 	state = States.PLAYBACK;
+	pipes = [];
 }
 
 function setup() {
@@ -82,6 +92,8 @@ function setup() {
 }
 
 function draw() {
+	wait();
+	active = true;
 	if(state!=States.PAUSED&&state!=States.RESET)
 		for (let n = 0; n < slider.value(); n++) {
 			if (counter % 75 == 0) {
